@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0F6E56">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>升壓劑計算器</title>
+<style>
+:root{
+  --bg:#F7F7F5; --card:#FFFFFF; --text:#1A1A1A; --sub:#6B6B66;
+  --border:#E3E2DD; --accent:#0F6E56; --accent-bg:#E1F5EE; --warn:#993C1D; --warn-bg:#FAECE7;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#161615; --card:#232322; --text:#EDEDEA; --sub:#9A9A94;
+    --border:#3A3A38; --accent:#5DCAA5; --accent-bg:#0A3A2E; --warn:#F0997B; --warn-bg:#3A1E12;
+  }
+}
+*{box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,"PingFang TC","Noto Sans TC",system-ui,sans-serif; background:var(--bg); color:var(--text); padding:16px 16px 40px; max-width:520px; margin:0 auto; line-height:1.5;}
+h1{font-size:19px; font-weight:600; padding:8px 0 14px;}
+label{font-size:13px; color:var(--sub); display:block; margin:0 0 5px;}
+select,input{width:100%; font-size:17px; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); appearance:none; -webkit-appearance:none;}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='2' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px;}
+input:focus,select:focus{outline:none; border-color:var(--accent);}
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 2px;}
+.chip{font-size:13px; padding:7px 12px; border:1px solid var(--border); border-radius:999px; background:var(--card); color:var(--text);}
+.chip.on{background:var(--accent-bg); border-color:var(--accent); color:var(--accent); font-weight:600;}
+.hint{display:inline-block; font-size:13px; color:var(--accent); background:var(--accent-bg); padding:5px 12px; border-radius:8px; margin:10px 0 2px;}
+.grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0;}
+.field{transition:opacity .2s;}
+.cards{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0;}
+.card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px;}
+.card .l{font-size:12px; color:var(--sub); margin-bottom:2px;}
+.card .v{font-size:22px; font-weight:600; font-variant-numeric:tabular-nums;}
+.card.main{grid-column:1 / -1; background:var(--accent-bg); border-color:transparent;}
+.card.main .l{color:var(--accent); font-size:13px;}
+.card.main .v{color:var(--accent); font-size:34px;}
+.card.main .over{display:none; font-size:13px; color:var(--warn); background:var(--warn-bg); padding:3px 10px; border-radius:6px; margin-top:6px;}
+.sec{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin:18px 0 0;}
+.sec h2{font-size:15px; font-weight:600; margin-bottom:12px;}
+.rev{display:flex; align-items:center; gap:10px;}
+.rev input{flex:1;}
+.rev .out{font-size:20px; font-weight:600; color:var(--accent); white-space:nowrap; font-variant-numeric:tabular-nums;}
+.note{font-size:12px; color:var(--sub); margin-top:20px; text-align:center;}
+</style>
+</head>
+<body>
+<h1>升壓劑劑量計算器</h1>
+
+<label for="drug">藥物（決定計算單位與劑量範圍）</label>
+<select id="drug" onchange="applyDrug()">
+  <option value="levophed">Levophed (Norepinephrine)</option>
+  <option value="epi">Epinephrine</option>
+  <option value="dopa">Dopamine</option>
+  <option value="dobu">Dobutamine</option>
+  <option value="vaso">Vasopressin</option>
+  <option value="ntg">NTG</option>
+  <option value="custom">其他（mcg/kg/min）</option>
+</select>
+
+<div class="chips" id="chips"></div>
+<span class="hint" id="rangeHint"></span>
+
+<div class="grid">
+  <div class="field" id="wtBox">
+    <label>體重 (kg)</label>
+    <input type="number" inputmode="decimal" id="wt" value="65" min="1" step="0.5" oninput="calc()">
+  </div>
+  <div class="field">
+    <label id="amtLabel">藥量 (mg)</label>
+    <input type="number" inputmode="decimal" id="amt" value="16" min="0.1" step="0.5" oninput="onDilutionEdit()">
+  </div>
+  <div class="field">
+    <label>溶液量 (ml)</label>
+    <input type="number" inputmode="decimal" id="vol" value="250" min="1" step="10" oninput="onDilutionEdit()">
+  </div>
+  <div class="field">
+    <label>速率 (ml/hr)</label>
+    <input type="number" inputmode="decimal" id="rate" value="20" min="0" step="0.5" oninput="calc()">
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card">
+    <div class="l">濃度</div>
+    <div class="v" id="conc">64 mcg/ml</div>
+  </div>
+  <div class="card">
+    <div class="l" id="perMinLabel">mcg/min</div>
+    <div class="v" id="perMin">21.3</div>
+  </div>
+  <div class="card main">
+    <div class="l" id="mainLabel">劑量 (mcg/kg/min)</div>
+    <div class="v" id="mainVal">0.328</div>
+    <span class="over" id="overWarn">超過常用範圍上限</span>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>反算：目標劑量 → 輸注速率</h2>
+  <label id="targetLabel">目標 (mcg/kg/min)</label>
+  <div class="rev">
+    <input type="number" inputmode="decimal" id="target" value="0.1" min="0" step="0.01" oninput="calc()">
+    <span class="out" id="needrate">6.1 ml/hr</span>
+  </div>
+</div>
+
+<p class="note">僅供換算參考，實際給藥以醫囑與單位標準配置為準</p>
+
+<script>
+const DRUGS = {
+  levophed: { mode:'mcgkg', range:'0.05–1 mcg/kg/min', max:1, target:0.1,
+    presets:[{a:16,v:250},{a:8,v:250},{a:4,v:100}] },
+  epi:      { mode:'mcgkg', range:'0.01–0.5 mcg/kg/min', max:0.5, target:0.05,
+    presets:[{a:1,v:100},{a:10,v:100}] },
+  dopa:     { mode:'mcgkg', range:'5–20 mcg/kg/min', max:20, target:5,
+    presets:[{a:600,v:250},{a:400,v:250}] },
+  dobu:     { mode:'mcgkg', range:'2–20 mcg/kg/min', max:20, target:5,
+    presets:[{a:250,v:250}] },
+  vaso:     { mode:'unit', range:'0.01–0.04 units/min', max:0.04, target:0.03,
+    presets:[{a:40,v:100},{a:20,v:100}] },
+  ntg:      { mode:'mcgmin', range:'5–200 mcg/min', max:200, target:20,
+    presets:[{a:5,v:10,l:'原液'},{a:10,v:20,l:'原液×2'},{a:50,v:250}] },
+  custom:   { mode:'mcgkg', range:'', max:null, target:0.1, presets:[] }
+};
+let mode = 'mcgkg', curMax = null;
+const $ = id => document.getElementById(id);
+
+function applyDrug(){
+  const d = DRUGS[$('drug').value];
+  mode = d.mode; curMax = d.max;
+  if(d.presets.length){ $('amt').value = d.presets[0].a; $('vol').value = d.presets[0].v; }
+  $('target').value = d.target;
+  renderChips(d);
+  $('rangeHint').textContent = d.range ? '常用範圍 ' + d.range : '';
+  $('rangeHint').style.display = d.range ? 'inline-block' : 'none';
+  $('amtLabel').textContent = mode === 'unit' ? '藥量 (units)' : '藥量 (mg)';
+  $('wtBox').style.opacity = mode === 'mcgkg' ? '1' : '0.35';
+  const u = mode === 'unit' ? 'units/min' : (mode === 'mcgmin' ? 'mcg/min' : 'mcg/kg/min');
+  $('mainLabel').textContent = '劑量 (' + u + ')';
+  $('targetLabel').textContent = '目標 (' + u + ')';
+  $('target').step = mode === 'unit' ? '0.005' : (mode === 'mcgmin' ? '5' : '0.01');
+  calc();
+}
+
+function renderChips(d){
+  const unitTxt = d.mode === 'unit' ? 'U' : 'mg';
+  $('chips').innerHTML = d.presets.map((p,i) =>
+    '<button class="chip" id="chip'+i+'" onclick="usePreset('+p.a+','+p.v+','+i+')">'+p.a+unitTxt+' / '+p.v+'ml'+(p.l ? '（'+p.l+'）' : '')+'</button>'
+  ).join('');
+  markChip();
+}
+
+function usePreset(a, v, i){
+  $('amt').value = a; $('vol').value = v;
+  calc(); markChip();
+}
+
+function markChip(){
+  const d = DRUGS[$('drug').value];
+  const a = parseFloat($('amt').value), v = parseFloat($('vol').value);
+  d.presets.forEach((p,i) => {
+    const el = $('chip'+i);
+    if(el) el.className = (p.a === a && p.v === v) ? 'chip on' : 'chip';
+  });
+}
+
+function onDilutionEdit(){ calc(); markChip(); }
+
+function fmt(x, dp){ return x >= 100 ? Math.round(x).toString() : x.toFixed(dp); }
+
+function calc(){
+  const wt = parseFloat($('wt').value) || 0;
+  const amt = parseFloat($('amt').value) || 0;
+  const vol = parseFloat($('vol').value) || 0;
+  const rate = parseFloat($('rate').value) || 0;
+  const target = parseFloat($('target').value) || 0;
+  let mainDose = 0;
+
+  if(mode === 'unit'){
+    const conc = vol > 0 ? amt / vol : 0;
+    mainDose = conc * rate / 60;
+    $('conc').textContent = conc.toFixed(2) + ' U/ml';
+    $('perMinLabel').textContent = 'units/hr';
+    $('perMin').textContent = (conc * rate).toFixed(2);
+    $('mainVal').textContent = mainDose.toFixed(3);
+    $('needrate').textContent = (conc > 0 ? target * 60 / conc : 0).toFixed(1) + ' ml/hr';
+  } else {
+    const conc = vol > 0 ? amt * 1000 / vol : 0;
+    const mcgmin = conc * rate / 60;
+    $('conc').textContent = fmt(conc, 1) + ' mcg/ml';
+    $('perMinLabel').textContent = 'mcg/min';
+    $('perMin').textContent = fmt(mcgmin, 1);
+    if(mode === 'mcgmin'){
+      mainDose = mcgmin;
+      $('mainVal').textContent = fmt(mcgmin, 1);
+      $('needrate').textContent = (conc > 0 ? target * 60 / conc : 0).toFixed(1) + ' ml/hr';
+    } else {
+      mainDose = wt > 0 ? mcgmin / wt : 0;
+      $('mainVal').textContent = mainDose.toFixed(3);
+      $('needrate').textContent = ((conc > 0 && wt > 0) ? target * wt * 60 / conc : 0).toFixed(1) + ' ml/hr';
+    }
+  }
+  $('overWarn').style.display = (curMax !== null && mainDose > curMax) ? 'inline-block' : 'none';
+}
+applyDrug();
+</script>
+</body>
+</html>
